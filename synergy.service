@@ -1,0 +1,12 @@
+[Unit]
+Description=Synergy Proxy
+
+[Service]
+User=keyvan
+ExecStart=/usr/bin/node /home/keyvan/code/synproxy/synergy.js
+Environment=DISPLAY=:0
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=graphical.target

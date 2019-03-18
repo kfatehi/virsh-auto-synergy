@@ -52,15 +52,16 @@ async function loop() {
       console.log('creating proxy');
       proxy = createProxy(port, ipAddress, port, {tls: false});
 
-      const sideBySide = /1720/.test(execSync(`xrandr | grep '*'`));
-      if (sideBySide) {
-        console.log('side by side... creating client');
-        client = spawn('synergyc', ['--enable-crypto', '-f', '--restart', ipAddress], { stdio: 'inherit', env: process.env });
-      } else if (client) {
-        console.log('no longer side by side, killing client');
-        client.kill('SIGTERM');
-        client = null;
-      }
+    }
+
+    const sideBySide = /1720/.test(execSync(`xrandr | grep '*'`));
+    if (sideBySide) {
+      console.log('side by side... creating client');
+      client = spawn('synergyc', ['--enable-crypto', '-f', '--restart', ipAddress], { stdio: 'inherit', env: process.env });
+    } else if (client) {
+      console.log('no longer side by side, killing client');
+      client.kill('SIGTERM');
+      client = null;
     }
   } else {
     console.log('VMs synergy is off');
@@ -73,17 +74,17 @@ async function loop() {
         proxy = null;
       }
 
-      if (client) {
-        console.log('killing client');
-        client.kill('SIGTERM');
-        client = null;
-      }
-
       console.log('wait until port is released');
       await portRelease(port);
 
       console.log('spawning synergy');
       synergy = spawn('synergys', ['-f', '--enable-crypto'], { stdio: "inherit", env: process.env });
+    }
+
+    if (client) {
+      console.log('killing client');
+      client.kill('SIGTERM');
+      client = null;
     }
   }
 
@@ -92,7 +93,7 @@ async function loop() {
 
 async function getVirtualMachineIp(domain, bridge) {
   return new Promise((resolve, reject) => {
-    parseXML(execSync(`virsh dumpxml ${domain}`), (err, vmData)=>{
+    parseXML(execSync(`virsh --connect qemu:///system dumpxml ${domain}`), (err, vmData)=>{
       if (err)
         return resolve();
       try {
