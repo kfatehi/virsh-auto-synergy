@@ -52,16 +52,26 @@ async function loop() {
       console.log('creating proxy');
       proxy = createProxy(port, ipAddress, port, {tls: false});
 
-    }
+      const sideBySide = /1720/.test(execSync(`xrandr | grep '*'`));
+      if (sideBySide) {
+        console.log('side by side... creating client');
 
-    const sideBySide = /1720/.test(execSync(`xrandr | grep '*'`));
-    if (sideBySide) {
-      console.log('side by side... creating client');
-      client = spawn('synergyc', ['--enable-crypto', '-f', '--restart', ipAddress], { stdio: 'inherit', env: process.env });
-    } else if (client) {
-      console.log('no longer side by side, killing client');
-      client.kill('SIGTERM');
-      client = null;
+        try {
+          console.log('killing external synergy client');
+          execSync('pkill -SIGKILL synergyc');
+        } catch(err) {
+        }
+        client = spawn('synergyc', ['--enable-crypto', '-f', '--restart', ipAddress], { stdio: 'inherit', env: process.env });
+      } else if (client) {
+        console.log('no longer side by side, killing client');
+        client.kill('SIGTERM');
+        client = null;
+        try {
+          console.log('killing external synergy client');
+          execSync('pkill -SIGKILL synergyc');
+        } catch(err) {
+        }
+      }
     }
   } else {
     console.log('VMs synergy is off');
@@ -85,6 +95,11 @@ async function loop() {
       console.log('killing client');
       client.kill('SIGTERM');
       client = null;
+      try {
+        console.log('killing external synergy client');
+        execSync('pkill -SIGKILL synergyc');
+      } catch(err) {
+      }
     }
   }
 
