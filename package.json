@@ -1,0 +1,16 @@
+{
+  "name": "synproxy",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "node-tcp-proxy": "0.0.13",
+    "xml2js": "^0.4.19"
+  }
+}
