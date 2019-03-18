@@ -12,18 +12,17 @@ let synergy;
 
 async function loop() {
   let ipAddress = await getVirtualMachineIp(domain, bridge);
+  let portOpen = false;
   if (!ipAddress) {
     console.log('couldnt get ip');
-    setTimeout(loop, 10000);
-    return;
+  } else {
+    console.log('checking VMs synergy server');
+    try {
+      portOpen = /open/.test(execSync(`sudo nmap -sS -p ${port} ${ipAddress} | grep open`))
+    } catch(err) {
+    }
   }
 
-  console.log('checking VMs synergy server');
-  let portOpen = false;
-  try {
-    portOpen = /open/.test(execSync(`sudo nmap -sS -p ${port} ${ipAddress} | grep open`))
-  } catch(err) {
-  }
   if (portOpen) {
     if (proxy) {
       console.log('proxy is already on. doing nothing');
@@ -52,25 +51,29 @@ async function loop() {
       console.log('creating proxy');
       proxy = createProxy(port, ipAddress, port, {tls: false});
 
-      const sideBySide = /1720/.test(execSync(`xrandr | grep '*'`));
-      if (sideBySide) {
-        console.log('side by side... creating client');
+      try {
+        console.log('killing external synergy server');
+        const sideBySide = /1720/.test(execSync(`xrandr | grep '*'`));
+        if (sideBySide) {
+          console.log('side by side... creating client');
 
-        try {
-          console.log('killing external synergy client');
-          execSync('pkill -SIGKILL synergyc');
-        } catch(err) {
+          try {
+            console.log('killing external synergy client');
+            execSync('pkill -SIGKILL synergyc');
+          } catch(err) {
+          }
+          client = spawn('synergyc', ['--enable-crypto', '-f', '--restart', ipAddress], { stdio: 'inherit', env: process.env });
+        } else if (client) {
+          console.log('no longer side by side, killing client');
+          client.kill('SIGTERM');
+          client = null;
+          try {
+            console.log('killing external synergy client');
+            execSync('pkill -SIGKILL synergyc');
+          } catch(err) {
+          }
         }
-        client = spawn('synergyc', ['--enable-crypto', '-f', '--restart', ipAddress], { stdio: 'inherit', env: process.env });
-      } else if (client) {
-        console.log('no longer side by side, killing client');
-        client.kill('SIGTERM');
-        client = null;
-        try {
-          console.log('killing external synergy client');
-          execSync('pkill -SIGKILL synergyc');
-        } catch(err) {
-        }
+      } catch(err) {
       }
     }
   } else {
