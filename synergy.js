@@ -19,7 +19,14 @@ async function loop() {
   } else {
     console.log('checking VMs synergy server');
     try {
-      portOpen = /open/.test(execSync(`sudo nmap -sS -p ${port} ${ipAddress} | grep open`))
+      // use lsof here so as not to send any garbage to the synergy server unless we need to
+      let stdout = spawnSync('lsof', ['-i', `:${port}`]).stdout.toString();
+      if (stdout.includes(ipAddress)) {
+        console.log("a client is connected to the VM")
+        portOpen = true
+      } else {
+        portOpen = /open/.test(execSync(`sudo nmap -sS -p ${port} ${ipAddress} | grep open`))
+      }
     } catch(err) {
     }
   }
