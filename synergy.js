@@ -15,14 +15,14 @@ async function loop() {
   let ipAddress = await getVirtualMachineIp(domain, bridge);
   let portOpen = false;
   if (!ipAddress) {
-    console.log('couldnt get ip');
+    //console.log('couldnt get ip');
   } else {
-    console.log('checking VMs synergy server');
+    //console.log('checking VMs synergy server');
     try {
       // use lsof here so as not to send any garbage to the synergy server unless we need to
       let stdout = spawnSync('lsof', ['-i', `:${port}`]).stdout.toString();
       if (stdout.includes(ipAddress)) {
-        console.log("a client is connected to the VM")
+        //console.log("a client is connected to the VM")
         portOpen = true
       } else {
         portOpen = /open/.test(execSync(`sudo nmap -sS -p ${port} ${ipAddress} | grep open`))
@@ -32,52 +32,50 @@ async function loop() {
   }
 
   if (portOpen) {
-    if (proxy) {
-      console.log('proxy is already on. doing nothing');
-    } else {
+    if (!proxy) {
       if (synergy) {
-        console.log('killing internal synergy');
+        //console.log('killing internal synergy');
         synergy.kill('SIGTERM');
         synergy = null;
       } else {
         try {
-          console.log('killing external synergy');
+          //console.log('killing external synergy');
           execSync('pkill synergy');
         } catch(err) {
         }
       }
 
       try {
-        console.log('killing external synergy server');
+        //console.log('killing external synergy server');
         execSync('pkill -SIGKILL synergys');
       } catch(err) {
       }
 
-      console.log('wait until port is released');
+      //console.log('wait until port is released');
       await portRelease(port);
 
-      console.log('creating proxy');
+      //console.log('creating proxy');
       proxy = createProxy(port, ipAddress, port, {tls: false});
 
       if (xRunning) { 
         try {
           const sideBySide = /1720/.test(execSync(`xrandr | grep '*'`));
           if (sideBySide) {
-            console.log('side by side... creating client');
+            //console.log('side by side... creating client');
 
             try {
-              console.log('killing external synergy client');
+              //console.log('killing external synergy client');
               execSync('pkill -SIGKILL synergyc');
             } catch(err) {
             }
             client = spawn('synergyc', ['--enable-crypto', '-f', '--restart', ipAddress], { stdio: 'inherit', env: process.env });
             client.on('exit', ()=>client = null);
           } else if (client) {
-            console.log('no longer side by side, killing client');
+            //console.log('no longer side by side, killing client');
             client.kill('SIGTERM');
             client = null;
             try {
-              console.log('killing external synergy client');
+              //console.log('killing external synergy client');
               execSync('pkill -SIGKILL synergyc');
             } catch(err) {
             }
@@ -87,32 +85,32 @@ async function loop() {
       }
     }
   } else {
-    console.log('VMs synergy is off');
+    //console.log('VMs synergy is off');
     if (synergy) {
-      console.log('synergy already running, doing nothing');
+      //console.log('synergy already running, doing nothing');
     } else {
       if (proxy) {
-        console.log('killing proxy');
+        //console.log('killing proxy');
         proxy.end();
         proxy = null;
       }
 
       if (xRunning) {
-        console.log('wait until port is released');
+        //console.log('wait until port is released');
         await portRelease(port);
 
-        console.log('spawning synergy');
+        //console.log('spawning synergy');
         synergy = spawn('synergys', ['-f', '--enable-crypto'], { stdio: "inherit", env: process.env });
         synergy.on('exit', ()=>synergy = null);
       }
     }
 
     if (client) {
-      console.log('killing client');
+      //console.log('killing client');
       client.kill('SIGTERM');
       client = null;
       try {
-        console.log('killing external synergy client');
+        //console.log('killing external synergy client');
         execSync('pkill -SIGKILL synergyc');
       } catch(err) {
       }
