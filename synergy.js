@@ -11,6 +11,7 @@ let proxy;
 let synergy;
 
 async function loop() {
+  let xRunning = checkXRunning();
   let ipAddress = await getVirtualMachineIp(domain, bridge);
   let portOpen = false;
   if (!ipAddress) {
@@ -51,29 +52,31 @@ async function loop() {
       console.log('creating proxy');
       proxy = createProxy(port, ipAddress, port, {tls: false});
 
-      try {
-        console.log('killing external synergy server');
-        const sideBySide = /1720/.test(execSync(`xrandr | grep '*'`));
-        if (sideBySide) {
-          console.log('side by side... creating client');
+      if (xRunning) { 
+        try {
+          const sideBySide = /1720/.test(execSync(`xrandr | grep '*'`));
+          if (sideBySide) {
+            console.log('side by side... creating client');
 
-          try {
-            console.log('killing external synergy client');
-            execSync('pkill -SIGKILL synergyc');
-          } catch(err) {
+            try {
+              console.log('killing external synergy client');
+              execSync('pkill -SIGKILL synergyc');
+            } catch(err) {
+            }
+            client = spawn('synergyc', ['--enable-crypto', '-f', '--restart', ipAddress], { stdio: 'inherit', env: process.env });
+            client.on('exit', ()=>client = null);
+          } else if (client) {
+            console.log('no longer side by side, killing client');
+            client.kill('SIGTERM');
+            client = null;
+            try {
+              console.log('killing external synergy client');
+              execSync('pkill -SIGKILL synergyc');
+            } catch(err) {
+            }
           }
-          client = spawn('synergyc', ['--enable-crypto', '-f', '--restart', ipAddress], { stdio: 'inherit', env: process.env });
-        } else if (client) {
-          console.log('no longer side by side, killing client');
-          client.kill('SIGTERM');
-          client = null;
-          try {
-            console.log('killing external synergy client');
-            execSync('pkill -SIGKILL synergyc');
-          } catch(err) {
-          }
+        } catch(err) {
         }
-      } catch(err) {
       }
     }
   } else {
@@ -87,11 +90,14 @@ async function loop() {
         proxy = null;
       }
 
-      console.log('wait until port is released');
-      await portRelease(port);
+      if (xRunning) {
+        console.log('wait until port is released');
+        await portRelease(port);
 
-      console.log('spawning synergy');
-      synergy = spawn('synergys', ['-f', '--enable-crypto'], { stdio: "inherit", env: process.env });
+        console.log('spawning synergy');
+        synergy = spawn('synergys', ['-f', '--enable-crypto'], { stdio: "inherit", env: process.env });
+        synergy.on('exit', ()=>synergy = null);
+      }
     }
 
     if (client) {
@@ -137,6 +143,10 @@ async function portRelease(port) {
     await delay(1000);
     status = out.status;
   }
+}
+
+function checkXRunning() {
+  return spawnSync('xprop', ['-root']).status === 0;
 }
 
 loop();
